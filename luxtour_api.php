@@ -17,6 +17,8 @@ class luxtour_api
     public $db_apartments = "luxtour_apartments";
     public $db_orders = "luxtour_order";
     public $db_customers = "luxtour_customer";
+	public $db_message = "luxtour_message";
+	public $db_tel = "luxtour_tel";
 
     public $namespace = "luxtour_api/v1";
 
@@ -120,11 +122,89 @@ class luxtour_api
             'callback' => array($this, 'get_statistics_all'),
         ));
 
-        register_rest_route($this->namespace, '/get_stats/(?P<id>[0-9]+)', array(
+        register_rest_route($this->namespace, '/get_stats/(?P<id>[a-zA-Z0-9]+)', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_stats'),
         ));
+
+		register_rest_route($this->namespace, '/post_message/', array(
+			'methods' => 'PUT',
+			'callback' => array($this, 'post_message'),
+		));
+
+		register_rest_route($this->namespace, '/tel/', array(
+			'methods' => 'PUT',
+			'callback' => array($this, 'tel'),
+		));
     }
+
+	function tel($data)
+	{
+		$data = json_decode($data);
+
+		if (array_key_exists('fullname', $data) && array_key_exists('tel'))
+		{
+			$ip = $_SERVER['REMOTE_ADDR'];
+
+			$fullname = htmlspecialchars($data['fullname']);
+			$tel = htmlspecialchars($data['tel']);
+
+			global $wpdb;
+			$db = $wpdb->prefix.$this->db_tel;
+
+			$sql = "select date from $db where ip = '$ip' order by date desc";
+			$result = $wpdb->get_var($sql);
+
+			if ($result != null)
+			{
+				$date1 = new DateTime(null, new DateTimeZone('Europe/Kiev'));
+				$date2 = new DateTime($result);
+
+				$interval = $date2->diff($date1);
+			}
+
+			if ($result == null || ($interval->h - 2) > 1 )
+			{
+				$sql = "insert into $db (`fullname`, `tel`, `ip`) values ('$fullname', '$tel', '$ip')";
+				$wpdb->query($sql);
+			}
+		}
+	}
+
+	function post_message($data)
+	{
+
+		$data = json_decode($data->get_body(), true);
+
+		if (array_key_exists('fullname', $data) && array_key_exists('email', $data) && array_key_exists('message', $data))
+		{
+			$ip = $_SERVER['REMOTE_ADDR'];
+
+			$fullname = htmlspecialchars($data['fullname']);
+			$email = htmlspecialchars($data['email']);
+			$message = htmlspecialchars($data['message']);
+
+			global $wpdb;
+			$db = $wpdb->prefix.$this->db_message;
+
+			$sql = "select date from $db where ip = '$ip' order by date desc";
+			$result = $wpdb->get_var($sql);
+			$interval = null;
+
+			if ($result != null)
+			{
+				$datetime1 = new DateTime(null, new DateTimeZone('Europe/Kiev'));
+				$datetime2 = new DateTime($result);
+				$interval = $datetime2->diff($datetime1);
+			}
+
+			if($result == null || ($interval->h - 2) > 1)
+			{
+				$sql = "insert into $db (`fullname`, `email`, `message`, `ip`) values ('$fullname', '$email', '$message', '$ip')";
+				$wpdb->query($sql);
+			}
+		}
+	}
 
     function AddOrder($data)
     {
@@ -144,7 +224,9 @@ class luxtour_api
             $date_from = $b['date_from'];
             $date_until = $b['date_until'];
 
-            $agent_id = $b['agent_id'];
+            $key = $b['agent_id'];
+
+
 
             $comment = "";
 
@@ -161,6 +243,8 @@ class luxtour_api
             $customers = $wpdb->prefix.$this->db_customers;
             $apartments = $wpdb->prefix.$this->db_apartments;
 
+			$sql_id = "select id from ololo_luxtour_agents where `key` = '$key'";
+			$agent_id = $wpdb->get_var($sql_id);
 
             // days count
 
@@ -292,10 +376,10 @@ class luxtour_api
     function get_stats($data)
     {
 
-        $id = -1;
-        $id = intval($data['id']);
+        $key = '-1';
+        $key = $data['id'];
 
-        if ($id != -1)
+        if ($key != '-1')
         {
 
             global $wpdb;
@@ -305,6 +389,11 @@ class luxtour_api
             $hotels = $wpdb->prefix.$this->db_hotels;
             $tours = $wpdb->prefix.$this->db_tours;
             $apartments = $wpdb->prefix.$this->db_apartments;
+			$agents = $wpdb->prefix."luxtour_agents";
+
+			$query_id = "select id from $agents where `key` = '$key'";
+			$id = $wpdb->get_var($query_id);
+
 
             $query_orders = "select t_order.id, t_tours.title as tour, t_hotels.title as hotel, t_apartments.title as apartments, t_order.date_from, t_order.date_until, t_order.customers_count, t_order.total_price, t_order.date_create, t_order.date_confirm, t_order.status from $orders as t_order, $hotels as t_hotels, $tours as t_tours, $apartments as t_apartments where t_order.agent_id = $id and t_tours.id = t_order.tour_id and t_hotels.id = t_order.hotel_id and t_apartments.id = t_order.apartments_id order by t_order.id desc";
 
@@ -330,7 +419,7 @@ class luxtour_api
 
         $type = $data['type'];
         $count = $data['count'];
-        $id = $data['id'];
+        $key = $data['id'];
 
         global $wpdb;
 
@@ -339,13 +428,17 @@ class luxtour_api
         $tours = $wpdb->prefix.$this->db_tours;
         $hotels = $wpdb->prefix.$this->db_hotels;
         $apartments = $wpdb->prefix.$this->db_apartments;
+		$agents = $wpdb->prefix."luxtour_agents";
 
         $output = "";
         $query = "";
         $where = "where agent_id";
 
-        if ($id != '' && $id > 0)
+        if ($key != '' && $key != 0 && $key != "0")
         {
+			$sql_id = "select `id` from $agents where `key` = $key";
+			$id = $wpdb->get_var($sql_id);
+
             $where.=" = $id";
         }
 
