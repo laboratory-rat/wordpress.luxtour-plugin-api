@@ -2,7 +2,7 @@
 /*
 Plugin Name: Luxtour api
 Description: api
-Version: 0.1
+Version: 0.1.1
 Author: Oleg A. T.
 Author URI: http://luxtour.online
 Plugin URI: http://luxtour.online
@@ -97,7 +97,7 @@ class luxtour_api
             'callback' => array($this, 'xyu'),
         ));
 
-        register_rest_route($this->namespace, '/news/(?P<count>[0-9]+)/(?P<start>[0-9]+)', array(
+        register_rest_route($this->namespace, '/news/(?P<count>[0-9]+)/(?P<start>[0-9]+)/(?P<lang>[a-z]+)', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_news'),
         ));
@@ -510,9 +510,14 @@ class luxtour_api
         $start = $data['start'];
         $count = $data['count'];
 
+		$lang = "en";
+		if (isset($data['lang']))
+			$lang = $data['lang'];
+
         $myposts = get_posts( array(
             'posts_per_page' => $count,
             'offset'         => $start,
+			'category_name' => $lang,
         ) );
 
         return $myposts;
