@@ -92,10 +92,6 @@ class luxtour_api
 
     function add_route()
     {
-        register_rest_route( 'luxtour_api/v1', '/xyu/', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'xyu'),
-        ));
 
         register_rest_route($this->namespace, '/news/(?P<count>[0-9]+)/(?P<start>[0-9]+)/(?P<lang>[a-z]+)', array(
             'methods' => 'GET',
@@ -213,7 +209,7 @@ class luxtour_api
 
         if (array_key_exists('tour', $b) && array_key_exists('hotel', $b) && array_key_exists('apartments', $b) &&
             array_key_exists('customers', $b) && array_key_exists('date_from', $b) && array_key_exists('date_until', $b) &&
-            array_key_exists('agent_id', $b))
+            array_key_exists('api_key', $b))
         {
             $tour_id = $b['tour'];
             $hotel_id = $b['hotel'];
@@ -224,7 +220,7 @@ class luxtour_api
             $date_from = $b['date_from'];
             $date_until = $b['date_until'];
 
-            $key = $b['agent_id'];
+            $key = $b['api_key'];
 
 
 
@@ -445,7 +441,7 @@ class luxtour_api
         switch ($type) {
             case 'orders':
                 if($count < 1)
-                    $query = "select count(id) as count, DATE(date_create) date from $orders $where GROUP BY date";
+                    $query = "select count(id) as count, DATE(date_create) date from $orders $where GROUP BY date limit 30"; // not prepared
                 else
                     $query = "select count(id) as count, DATE(date_create) date from $orders $where GROUP BY date limit $count";
                 break;
@@ -475,21 +471,21 @@ class luxtour_api
             case 'tours':
 
                 $query = "select count(t_orders.id) as count, t_tours.title as title from $orders as t_orders, $tours as t_tours".
-                    " $where and t_orders.tour_id = t_tours.id GROUP BY t_tours.title";
+                    " $where and t_orders.tour_id = t_tours.id GROUP BY t_tours.title limit 5";
 
                 break;
 
             case 'hotels':
 
                 $query = "select count(t_orders.id) as count, t_hotels.title as title from $orders as t_orders, $hotels as t_hotels".
-                    " $where and t_orders.hotel_id = t_hotels.id GROUP BY t_hotels.title";
+                    " $where and t_orders.hotel_id = t_hotels.id GROUP BY t_hotels.title limit 10";
 
                 break;
 
             case 'apartments':
                 $query = "select count(t_orders.id) as count, t_hotels.title as hotel_title, t_apartments.title as apartments_title from".
                     " $orders as t_orders, $hotels as t_hotels, $apartments as t_apartments".
-                    " $where and t_orders.apartments_id = t_apartments.id and t_orders.hotel_id = t_hotels.id GROUP BY t_apartments.title, t_hotels.title ORDER BY count(t_orders.id) desc";
+                    " $where and t_orders.apartments_id = t_apartments.id and t_orders.hotel_id = t_hotels.id GROUP BY t_apartments.title, t_hotels.title ORDER BY count(t_orders.id) desc limit 10";
                 if ($count > 0)
                     $query.= " limit $count";
 
@@ -497,7 +493,7 @@ class luxtour_api
                 break;
 
             default:
-                $query = "select count(id), DATE(date_create) date from $orders GROUP BY date";
+                $query = "select count(id), DATE(date_create) date from $orders GROUP BY date limit 30";
                 break;
         }
 
@@ -521,20 +517,6 @@ class luxtour_api
         ) );
 
         return $myposts;
-    }
-
-    function xyu()
-    {
-
-        $args = array
-        (
-            'name' => 'xyu',
-            'second name' => 'xyu',
-            'third name' => 'xyu',
-        );
-
-        return $args;
-
     }
 
     // Plugin menu options
